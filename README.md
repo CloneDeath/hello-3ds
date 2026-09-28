@@ -1,14 +1,16 @@
 # Nightfall: Ashen Keep
 
-An original gothic action-platformer prototype for a Nintendo 3DS with custom firmware, inspired by the exploration and dual-screen layout of DS-era action RPGs. Original characters, graphics, and castle; no Castlevania assets.
+An original gothic action-platformer prototype for a Nintendo 3DS with custom firmware, inspired by the exploration and dual-screen layout of DS-era action RPGs. Uses CC0 pixel art from GothicVania Church and Castle Platformer; see [art credits](assets/CREDITS.md).
 
-## Install version 1.2.0
+## Install version 1.3.0
 
 Open **FBI > Remote Install > Scan QR Code** on the 3DS:
 
 ![Install Nightfall](install-qr.png)
 
-[Download the CIA](https://raw.githubusercontent.com/CloneDeath/hello-3ds/master/output/hello-3ds.cia?v=1.2.0)
+[Download the CIA](https://raw.githubusercontent.com/CloneDeath/hello-3ds/master/output/hello-3ds.cia?v=1.3.0)
+
+Version 1.3 adds animated knight, bat, ghoul, and wizard sprites, detailed gothic architecture, tiled floors, and stereoscopic scenery. The 3D slider controls depth: far scenery and arches recede, narrow foreground pillars project forward, and platform tops have depth. The player, collision edges, and HUD stay at screen depth. Slider zero and 2DS display flat. Existing saves remain compatible. Stereo comfort and performance still need testing on actual hardware.
 
 This installs over the original Hello 3DS test using the same title ID, `000400000F7A9100`. The HOME Menu icon is now Nightfall. If the icon remains cached, restart the HOME Menu/console. Development lives on `master`.
 
@@ -28,7 +30,7 @@ Choose **Enter the Castle**, select one of three empty slots, and name your hunt
 
 Explore six connected rooms: Gatehouse, Ruined Nave, Sanctuary, Ashen Ramparts, Bell Tower, and Warden's Crypt. The lower-screen map tracks visited rooms. Take the door in the Nave to the Sanctuary. Press Up beside its green altar to **save and restore health**. The Bell Tower is an optional side room. Defeat the Warden in the Crypt, then return to the Sanctuary to save the victory.
 
-Skeletons patrol, bats fly, and the Warden periodically charges. Sword hits briefly stun enemies. Defeated enemies drop gold or healing orbs; the Warden awards 25 gold. Taking damage gives brief invulnerability. Death offers a retry from the last save.
+Ghouls patrol, bats fly, and the Warden periodically charges. Sword hits briefly stun enemies. Defeated enemies drop gold or healing orbs; the Warden awards 25 gold. Taking damage gives brief invulnerability. Death offers a retry from the last save.
 
 The game creates the initial save at the Gatehouse. Later progress is saved **only at the Sanctuary**, not when quitting. Gold, kills, play time, discovered rooms, and the Warden's defeat persist at checkpoints. Ordinary enemies respawn when re-entering rooms. There is no save-slot deletion in this version.
 

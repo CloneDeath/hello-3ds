@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 static uint32_t topPixels[400 * 240], bottomPixels[320 * 240];
+static uint32_t rightPixels[400 * 240];
 static unsigned buttons(u32 keys) {
     unsigned b = 0;
     if (keys & KEY_LEFT)
@@ -29,8 +30,8 @@ static unsigned buttons(u32 keys) {
         b |= BTN_MAP;
     return b;
 }
-static void present(gfxScreen_t screen, const uint32_t *pixels, int width) {
-    u8 *fb = gfxGetFramebuffer(screen, GFX_LEFT, NULL, NULL);
+static void present(gfxScreen_t screen, gfx3dSide_t side, const uint32_t *pixels, int width) {
+    u8 *fb = gfxGetFramebuffer(screen, side, NULL, NULL);
     for (int x = 0; x < width; x++)
         for (int y = 0; y < 240; y++) {
             uint32_t color = pixels[y * width + x];
@@ -64,7 +65,7 @@ static void nameHunter(Game *g) {
 }
 int main(void) {
     gfxInitDefault();
-    gfxSet3D(false);
+    gfxSet3D(true);
     Game game;
     gameInit(&game);
     Canvas top = {400, 240, topPixels}, bottom = {320, 240, bottomPixels};
@@ -101,9 +102,15 @@ int main(void) {
             input.touched = false;
             accumulated -= 16.6667;
         }
-        renderGame(&game, top, bottom);
-        present(GFX_TOP, topPixels, 400);
-        present(GFX_BOTTOM, bottomPixels, 320);
+        float slider = osGet3DSliderState();
+        renderGameEye(&game, top, bottom, -slider);
+        present(GFX_TOP, GFX_LEFT, topPixels, 400);
+        if (slider > 0) {
+            Canvas right = {400, 240, rightPixels};
+            renderGameEye(&game, right, bottom, slider);
+            present(GFX_TOP, GFX_RIGHT, rightPixels, 400);
+        }
+        present(GFX_BOTTOM, GFX_LEFT, bottomPixels, 320);
         gfxFlushBuffers();
         gfxSwapBuffers();
         gspWaitForVBlank();

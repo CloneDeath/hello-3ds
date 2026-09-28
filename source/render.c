@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "art.inc"
+static float eyeOffset;
+
 #define INK 0x0a0d18
 #define PAPER 0xe7dfc8
 #define GOLD 0xd8b46c
@@ -128,53 +131,57 @@ static void candle(Canvas c, int x, int y, int frame, uint32_t glow) {
     box(c, x - 1, y - 6, 3, 5, glow);
     pixel(c, x, y - 7, PAPER);
 }
-static void window(Canvas c, int x, int y, uint32_t accent) {
-    box(c, x - 3, y + 13, 40, 78, 0x181926);
-    box(c, x, y + 15, 34, 70, 0x263047);
-    for (int row = 0; row < 17; row++)
-        box(c, x + 16 - row, y + 16 - row, row * 2 + 2, 1, 0x263047);
-    box(c, x + 15, y + 2, 3, 84, accent);
-    box(c, x, y + 49, 34, 3, accent);
-    box(c, x - 4, y + 85, 42, 4, accent);
-    line(c, x + 2, y + 30, x + 30, y + 70, 0x465166);
+// Positive depth is behind the display. Actors and collision surfaces use depth zero.
+static int depth(float z) { return (int)lroundf(eyeOffset * z); }
+static void art(Canvas c, const Art *a, int x, int y, bool flip, int light) {
+    int x0 = x < 0 ? -x : 0, y0 = y < 0 ? -y : 0;
+    int x1 = a->w < c.width-x ? a->w : c.width-x;
+    int y1 = a->h < c.height-y ? a->h : c.height-y;
+    for (int yy=y0; yy<y1; yy++) for (int xx=x0; xx<x1; xx++) {
+        uint16_t v=a->pixels[yy*a->w+(flip ? a->w-1-xx : xx)];
+        if (!v) continue;
+        unsigned r=((v>>11)*255/31)*light/255;
+        unsigned g=(((v>>5)&63)*255/63)*light/255;
+        unsigned b=((v&31)*255/31)*light/255;
+        c.pixels[(y+yy)*c.width+x+xx]=(r<<16)|(g<<8)|b;
+    }
 }
 static void roomBackground(Canvas c, const Game *g) {
     const Room *r = &rooms[g->room];
-    box(c, 0, 0, 400, 240, r->sky);
-    if (g->room == 0 || g->room == 3 || g->room == 4) {
-        disk(c, 323 - g->camera / 12, 60, 24, 0x818da1);
-        for (int i = 0; i < 15; i++) {
-            int x = i * 85 - g->camera / 3;
-            box(c, x, 124 + (i % 3) * 12, 55, 90, 0x1a2336);
-            box(c, x + 15, 104 + (i % 3) * 12, 25, 100, 0x1a2336);
-        }
-        for (int i = 0; i < 30; i++)
-            pixel(c, (i * 73 + 14 - g->camera / 10 + 1000) % 400, 30 + i * 19 % 85, 0x62708e);
+    box(c,0,0,400,240,0x181927);
+    bool outside = g->room == 0 || g->room == 3 || g->room == 4;
+    if (outside) {
+        for (int x=-256-(int)(g->camera*.18f)%256; x<420; x+=256)
+            art(c,&art_landscape,x+depth(6),-62,false,115);
+        disk(c,324-g->camera/12+depth(7),55,19,0xaba9c1);
+        disk(c,330-g->camera/12+depth(7),49,17,0x1b2338);
+    } else {
+        for (int y=25;y<208;y+=48)
+            for (int x=-32-(int)(g->camera*.45f)%32;x<420;x+=32)
+                art(c,&art_brick,x+depth(4),y,false,105);
     }
-    for (int x = -g->camera % 96 - 96; x < 400; x += 96) {
+    for (int x=-240-(int)(g->camera*.55f)%240;x<480;x+=240) {
         if (g->room != 3)
-            window(c, x + 25, 54, r->accent);
-        box(c, x + 3, 28, 13, 180, r->stone);
-        box(c, x, 30, 19, 7, r->accent);
-        box(c, x + 4, 40, 3, 160, 0x505063);
-        box(c, x, 199, 20, 9, r->accent);
+            art(c,&art_window,x+35+depth(3.5f),17,false,205);
+        art(c,&art_column,x-40+depth(2),17,false,220);
     }
-    for (int x = -g->camera % 32 - 32; x < 400; x += 32) {
-        box(c, x, 208, 32, 32, r->stone);
-        box(c, x, 208, 31, 3, r->accent);
-        box(c, x, 224, 32, 1, 0x191b2a);
-        box(c, x + 30, 212, 2, 12, 0x191b2a);
-        box(c, x + 14, 225, 2, 15, 0x191b2a);
-        line(c, x + 5, 214, x + 10, 217, 0x252737);
-        line(c, x + 10, 217, x + 8, 221, 0x252737);
-    }
-    for (int i = 0; i < r->platformCount; i++) {
-        Platform p = r->platforms[i];
-        int x = p.x - g->camera;
-        box(c, x, p.y, p.w, 9, r->stone);
-        box(c, x, p.y, p.w, 3, r->accent);
-        box(c, x + 4, p.y + 9, 5, 5, r->stone);
-        box(c, x + p.w - 9, p.y + 9, 5, 5, r->stone);
+    if (g->room == 5)
+        art(c,&art_crest,300-g->camera+depth(2),16,false,255);
+    // Receding top faces sit behind the collision edge; front faces remain at zero depth.
+    for (int y=0;y<7;y++)
+        box(c,0,201+y,400,1,0x3b3a52+(y<<16)+(y<<8));
+    for (int x=-(int)g->camera%48-48;x<400;x+=48)
+        art(c,&art_floor,x,208,false,235);
+    for (int i=0;i<r->platformCount;i++) {
+        Platform p=r->platforms[i];
+        int x=p.x-g->camera;
+        for (int y=0;y<6;y++)
+            box(c,x+depth((6-y)*.25f),p.y-6+y,p.w,1,0x4b485e);
+        for(int xx=0;xx<p.w;xx+=16) {
+            box(c,x+xx,p.y,p.w-xx<16?p.w-xx:16,10,0x343345);
+            line(c,x+xx,p.y+1,x+xx+(p.w-xx<16?p.w-xx:16)-1,p.y+1,0x9490a4);
+            line(c,x+xx,p.y+9,x+xx+10,p.y+9,0x181923);
+        }
     }
     if (r->leftRoom < 0) {
         box(c, -g->camera, 110, 11, 98, r->stone);
@@ -183,6 +190,7 @@ static void roomBackground(Canvas c, const Game *g) {
         box(c, r->width - 11 - g->camera, 110, 11, 98, r->stone);
     if (r->portalX >= 0) {
         int x = r->portalX - g->camera;
+        art(c, &art_door, x - 8, 144, false, 255);
         box(c, x - 14, 155, 43, 53, 0x080e19);
         border(c, x - 17, 152, 49, 56, r->accent);
         for (int i = 0; i < 4; i++)
@@ -192,6 +200,7 @@ static void roomBackground(Canvas c, const Game *g) {
     }
     if (r->saveRoom) {
         int x = 218 - g->camera;
+        art(c, &art_altar, x - 64 + depth(1), 17, false, 255);
         disk(c, x, 135, 23, 0x223e3b);
         disk(c, x, 135, 17, 0x2b5148);
         border(c, x - 10, 125, 21, 21, GREEN);
@@ -205,90 +214,30 @@ static void roomBackground(Canvas c, const Game *g) {
             pixel(c, x - 25 + (i * 13) % 50, 120 + (i * 17 + g->frame / 3) % 62, GREEN);
     }
 }
-static const char *hunter[] = {
-    "0000011111100000", "0000122222210000", "0001222222221000", "0001223333321000",
-    "0000133331310000", "0000133333310000", "0000013333100000", "0000117777110000",
-    "0001666444461000", "0016666444446100", "0016666444443610", "0166666555543310",
-    "0166661555513310", "0166611555511110", "0166611555510000", "0166111777710000",
-    "0166115555510000", "0166115555510000", "0166115555510000", "0166115515510000",
-    "0161105515510000", "0111005515510000", "0000005515510000", "0000005515510000",
-    "0000005515510000", "0000008818810000", "0000008818810000", "0000008818810000",
-    "0000018818881000", "0000011111111000"};
 static void player(Canvas c, const Game *g) {
-    const Player *p = &g->player;
-    if (p->hurt && (g->frame / 3) % 2)
-        return;
-    int x = (int)p->x - g->camera, y = (int)p->y;
-    uint32_t palette[] = {0,        0x10131d, 0xc6b68e, 0xe4bf9b, 0xc7c6cb,
-                          0x405374, 0x8b334d, 0xc9a96a, 0x292a3e};
-    int stride = p->grounded && fabsf(p->vx) > 0.2f ? (g->frame / 6) % 4 : 0;
-    for (int row = 0; row < 30; row++)
-        for (int col = 0; col < 16; col++) {
-            int color = hunter[row][col] - '0';
-            if (!color)
-                continue;
-            int move = row >= 21 ? (col < 9 ? (stride == 1   ? -2
-                                               : stride == 3 ? 2
-                                                             : 0)
-                                            : (stride == 1   ? 2
-                                               : stride == 3 ? -2
-                                                             : 0))
-                                 : 0;
-            pixel(c, x + (p->facing > 0 ? col : 15 - col) + move, y + row, palette[color]);
-        }
-    if (p->attack <= 15 && p->attack >= 5) {
-        int sx = x + (p->facing > 0 ? 13 : 2), sy = y + 14;
-        line(c, sx, sy, sx + p->facing * 32, sy - 3, PAPER);
-        line(c, sx, sy + 1, sx + p->facing * 30, sy - 2, 0xa4bacb);
-        line(c, sx + p->facing * 5, sy - 5, sx + p->facing * 5, sy + 5, GOLD);
-        for (int i = -14; i < 15; i++) {
-            int reach = 30 - (i * i) / 22;
-            pixel(c, sx + p->facing * reach, sy + i, 0xeee4be);
-        }
-    }
+    const Player *p=&g->player;
+    if (p->hurt && (g->frame/3)%2) return;
+    static const Art *walk[]={&art_knight_walk0,&art_knight_walk1,&art_knight_walk2,
+        &art_knight_walk3,&art_knight_walk4,&art_knight_walk5,&art_knight_walk6,&art_knight_walk7};
+    static const Art *attack[]={&art_knight_attack0,&art_knight_attack1,&art_knight_attack2};
+    const Art *a=&art_knight_idle;
+    if (!p->grounded) a=&art_knight_jump;
+    else if (fabsf(p->vx)>.2f) a=walk[(g->frame/6)%8];
+    if (p->attack) a=attack[(19-p->attack)*3/19];
+    int x=(int)p->x-g->camera+8;
+    // All source frames share a stable foot baseline; wider sword frames share the same body pivot.
+    int pivot=p->attack?43:27;
+    art(c,a,x-(p->facing<0?a->w-1-pivot:pivot),(int)p->y+30-a->h+4,p->facing<0,255);
 }
 static void enemy(Canvas c, const Game *g, const Enemy *e) {
-    if (!e->alive)
-        return;
-    int x = (int)e->x - g->camera, y = (int)e->y;
-    uint32_t bone = e->hurt ? PAPER : 0xbbc1bc, shadow = 0x626c76;
-    if (e->type == BAT) {
-        int flap = (e->phase / 7) % 2 ? 5 : -5;
-        for (int i = 0; i < 12; i++) {
-            line(c, x + 7, y + 6, x - i, y + flap + i / 3, 0x64445e);
-            line(c, x + 9, y + 6, x + 18 + i, y + flap + i / 3, 0x64445e);
-        }
-        box(c, x + 5, y + 2, 8, 9, e->hurt ? PAPER : 0x9d6479);
-        pixel(c, x + 6, y + 4, RED);
-        pixel(c, x + 11, y + 4, RED);
-        return;
-    }
-    int s = e->type == WARDEN ? 2 : 1, head = e->type == WARDEN ? 10 : 8;
-    box(c, x + 5, y, head, head, bone);
-    box(c, x + 7, y + 3, 2, 2, INK);
-    box(c, x + head + 1, y + 3, 2, 2, RED);
-    if (e->type == WARDEN) {
-        box(c, x + 3, y + 11, 23, 20, e->phase % 180 > 120 ? 0x92435d : 0x615c78);
-        border(c, x + 3, y + 11, 23, 20, GOLD);
-        box(c, x + 12, y - 4, 3, 5, GOLD);
-    } else {
-        box(c, x + 8, y + 8, 3, 12, shadow);
-        for (int i = 0; i < 3; i++)
-            box(c, x + 4, y + 9 + i * 4, 12, 2, bone);
-    }
-    int hips = e->type == WARDEN ? 29 : 20;
-    box(c, x + 4, y + hips, 15, 3, shadow);
-    int walk = (e->phase / 13) % 2 ? 2 : -2;
-    box(c, x + 4 + walk, y + hips + 3, 3 * s, 8, bone);
-    box(c, x + 13 - walk, y + hips + 3, 3 * s, 8, bone);
-    line(c, x + 3, y + 12, x - 1, y + 22, bone);
-    line(c, x + 18, y + 12, x + 22, y + 20, bone);
-    box(c, x + 22, y + 9, 2, 19, e->type == WARDEN ? RED : shadow);
-    box(c, x + 19, y + 22, 8, 2, GOLD);
-    if (e->hurt) {
-        line(c, x - 4, y - 3, x + 1, y + 2, GOLD);
-        line(c, x + 25, y - 3, x + 20, y + 2, PAPER);
-    }
+    if (!e->alive || (e->hurt && (g->frame/2)%2)) return;
+    static const Art *bats[]={&art_bat0,&art_bat1,&art_bat2,&art_bat3};
+    static const Art *ghouls[]={&art_ghoul0,&art_ghoul1,&art_ghoul2,&art_ghoul3,
+        &art_ghoul4,&art_ghoul5,&art_ghoul6};
+    static const Art *wizards[]={&art_wizard0,&art_wizard1,&art_wizard2,&art_wizard3,&art_wizard4};
+    const Art *a=e->type==BAT?bats[(e->phase/7)%4]:e->type==WARDEN?wizards[(e->phase/8)%5]:ghouls[(e->phase/7)%7];
+    int feet=(int)e->y+(e->type==BAT?23:e->type==WARDEN?49:36);
+    art(c,a,(int)e->x-g->camera+9-a->w/2,feet-a->h,e->x>g->player.x,255);
 }
 static void hud(Canvas c, const Game *g) {
     box(c, 0, 0, 400, 25, INK);
@@ -342,6 +291,9 @@ static void scene(Canvas c, const Game *g) {
             pixel(c, x - 1, y - 1, PAPER);
         }
     player(c, g);
+    // Near pillars move faster than the world and project slightly in front of the screen.
+    for (int x=-480-(int)(g->camera*1.12f)%480;x<440;x+=480)
+        art(c,&art_foreground,x-40+depth(-1.5f),70,false,90);
     hud(c, g);
 }
 static void map(Canvas c, const Game *g) {
@@ -390,15 +342,18 @@ static void gameBottom(Canvas c, const Game *g) {
 }
 static void titleTop(Canvas c, const Game *g) {
     backdrop(c, g->frame);
+    art(c,&art_column,-48+depth(2),30,false,220);
+    art(c,&art_column,320+depth(2),30,false,220);
     centered(c, 60, "NIGHTFALL", 4, 0x282333);
     centered(c, 57, "NIGHTFALL", 4, PAPER);
     line(c, 91, 99, 309, 99, GOLD);
     centered(c, 111, "ASHEN KEEP", 2, GOLD);
     centered(c, 166, "A CASTLE HAS WOKEN.", 1, PAPER);
     centered(c, 182, "ENTER BEFORE THE LAST LIGHT DIES.", 1, MUTED);
-    centered(c, 222, "PROTOTYPE 1.2.0", 1, MUTED);
+    centered(c, 222, "PROTOTYPE 1.3.0", 1, MUTED);
 }
-void renderGame(const Game *g, Canvas top, Canvas bottom) {
+void renderGameEye(const Game *g, Canvas top, Canvas bottom, float eye) {
+    eyeOffset = fmaxf(-1, fminf(1, eye));
     box(bottom, 0, 0, 320, 240, INK);
     if (g->screen == TITLE || g->screen == SLOTS || g->screen == NAME_ENTRY ||
         (g->screen == CONTROLS && g->returnScreen == TITLE))
@@ -493,4 +448,8 @@ void renderGame(const Game *g, Canvas top, Canvas bottom) {
     }
     if (g->noticeTicks && g->screen == SLOTS)
         centered(bottom, 230, g->notice, 1, RED);
+}
+
+void renderGame(const Game *g, Canvas top, Canvas bottom) {
+    renderGameEye(g,top,bottom,0);
 }

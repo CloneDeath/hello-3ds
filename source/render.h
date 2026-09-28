@@ -6,4 +6,5 @@ typedef struct {
     uint32_t *pixels;
 } Canvas;
 void renderGame(const Game *g, Canvas top, Canvas bottom);
+void renderGameEye(const Game *g, Canvas top, Canvas bottom, float eye);
 #endif

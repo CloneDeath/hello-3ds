@@ -166,11 +166,28 @@ int main(int argc, char **argv) {
         snprintf(path, sizeof path, "%s/save.ppm", argv[1]);
         image(path, tc);
     }
+    // Stereo changes only artwork: HUD, lower screen, and simulation remain identical.
+    static uint32_t left[400 * 240], right[400 * 240], lower[320 * 240];
+    Canvas lc = {400, 240, left}, rc = {400, 240, right}, lb = {320, 240, lower};
+    g.screen = PLAY;
+    g.noticeTicks = 0;
+    Game before = g;
+    renderGameEye(&g, lc, lb, -1);
+    renderGameEye(&g, rc, bc, 1);
+    assert(memcmp(left, right, sizeof left) != 0);
+    assert(memcmp(left, right, 400 * 25 * sizeof(uint32_t)) == 0);
+    assert(memcmp(lower, bottom, sizeof lower) == 0);
+    assert(memcmp(&before, &g, sizeof g) == 0);
+    renderGameEye(&g, lc, lb, 0);
+    renderGame(&g, rc, bc);
+    assert(memcmp(left, right, sizeof left) == 0);
     for (int room = 0; room < ROOM_COUNT; room++) {
         gameEnterRoom(&g, room, 50);
         for (int screen = TITLE; screen <= QUIT_CONFIRM; screen++) {
             g.screen = screen;
             renderGame(&g, tc, bc);
+            renderGameEye(&g, lc, lb, -1);
+            renderGameEye(&g, rc, bc, 1);
         }
     }
     puts("PASS: menus, movement, jumping, platforms, doors, combat, death, map, saves, backup, "
