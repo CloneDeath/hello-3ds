@@ -219,8 +219,7 @@ endif
 COMMON_MAKEROM_PARAMS := -rsf $(RSF) -target t -exefslogo -elf $(OUTPUT_FILE).elf -icon icon.icn \
 -banner banner.bnr -DAPP_TITLE="$(APP_TITLE)" -DAPP_PRODUCT_CODE="$(APP_PRODUCT_CODE)" \
 -DAPP_UNIQUE_ID="$(APP_UNIQUE_ID)" -DAPP_ROMFS="$(APP_ROMFS)" -DAPP_SYSTEM_MODE="64MB" \
--DAPP_SYSTEM_MODE_EXT="Legacy" -major "$(APP_VERSION_MAJOR)" -minor "$(APP_VERSION_MINOR)" \
--micro "$(APP_VERSION_MICRO)"
+-DAPP_SYSTEM_MODE_EXT="Legacy" -ver $(shell expr $(APP_VERSION_MAJOR) \* 1024 + $(APP_VERSION_MINOR) \* 16 + $(APP_VERSION_MICRO))
 
 ifeq ($(OS),Windows_NT)
 	MAKEROM = makerom.exe
@@ -247,7 +246,7 @@ $(OUTPUT_FILE).3dsx : $(OUTPUT_FILE).elf $(_3DSXDEPS)
 	$(_3DSXTOOL) $< $@ $(_3DSXFLAGS)
 	@echo built ... $(notdir $@)
 
-$(OUTPUT_FILE).smdh : $(APP_ICON)
+$(OUTPUT_FILE).smdh : $(APP_ICON) $(TOPDIR)/$(APP_INFO)
 	@$(SMDHTOOL) --create "$(APP_TITLE)" "$(APP_DESCRIPTION)" "$(APP_AUTHOR)" $(APP_ICON) $@
 	@echo built ... $(notdir $@)
 
@@ -259,7 +258,7 @@ $(OUTPUT_FILE).3ds : $(OUTPUT_FILE).elf banner.bnr icon.icn
 	@$(MAKEROM) -f cci -o $(OUTPUT_FILE).3ds -DAPP_ENCRYPTED=true $(COMMON_MAKEROM_PARAMS)
 	@echo "built ... $(notdir $@)"
 
-$(OUTPUT_FILE).cia : $(OUTPUT_FILE).elf banner.bnr icon.icn
+$(OUTPUT_FILE).cia : $(OUTPUT_FILE).elf banner.bnr icon.icn $(RSF) $(TOPDIR)/$(APP_INFO)
 	@$(MAKEROM) -f cia -o $(OUTPUT_FILE).cia -DAPP_ENCRYPTED=false $(COMMON_MAKEROM_PARAMS)
 	@echo "built ... $(notdir $@)"
 
@@ -276,7 +275,7 @@ banner.bnr : $(BANNER_IMAGE_FILE) $(BANNER_AUDIO_FILE)
 	@$(BANNERTOOL) makebanner $(BANNER_IMAGE_ARG) $(BANNER_AUDIO_ARG) -o banner.bnr > /dev/null
 	@echo built ... $(notdir $@)
 
-icon.icn : $(APP_ICON)
+icon.icn : $(APP_ICON) $(TOPDIR)/$(APP_INFO)
 	@$(BANNERTOOL) makesmdh -s "$(APP_TITLE)" -l "$(APP_TITLE)" -p "$(APP_AUTHOR)" -i $(APP_ICON) -o icon.icn > /dev/null
 	@echo built ... $(notdir $@)
 

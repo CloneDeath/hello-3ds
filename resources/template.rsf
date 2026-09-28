@@ -42,7 +42,7 @@ AccessControlInfo:
    #- TwlCardBackup
    #- TwlNandData
    #- Boss
-   #- DirectSdmc
+   - DirectSdmc
    #- Core
    #- CtrNandRo
    #- CtrNandRw
@@ -50,7 +50,7 @@ AccessControlInfo:
    #- CategorySystemSettings
    #- CardBoard
    #- ExportImportIvs
-   #- DirectSdmcWrite
+   - DirectSdmcWrite
    #- SwitchCleanup
    #- SaveDataMove
    #- Shop
